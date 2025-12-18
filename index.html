@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anton Kochnev</title>
+    <style>
+        :root {
+            --icon-color-base: #666666; 
+            --icon-color-hover: #8e8e8e;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+        
+        .social-icons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        .social-icon {
+            cursor: pointer;
+            color: var(--icon-color-base);
+            transition: color 0.2s ease, transform 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            height: 24px; 
+            width: 24px;
+        }
+        
+        .social-icon.logo { width: auto; }
+
+        @media (hover: hover) {
+            .social-icon:hover { color: var(--icon-color-hover); }
+        }
+        
+        .social-icon:active {
+            color: var(--icon-color-hover);
+            transform: scale(0.95);
+        }
+
+        #email-btn { position: relative; }
+
+        .email-state {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #email-check { opacity: 0; transform: scale(0.5); color: inherit; }
+        #email-btn.copied #email-envelope { opacity: 0; transform: scale(0.5); }
+        #email-btn.copied #email-check { opacity: 1; transform: scale(1); }
+    </style>
+</head>
+<body>
+
+<div class="social-icons">
+    <a href="#" class="social-icon" id="email-btn" title="Copy Email">
+        <div class="email-state" id="email-envelope">
+            <svg viewBox="0 0 24 24" fill="currentColor" height="92%" width="24" height="24">
+                <path d="M22 2H2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 4l-10 9-10-9V4l10 9 10-9v2z"></path>
+            </svg>
+        </div>
+        <div class="email-state" id="email-check">
+            <svg viewBox="0 0 24 24" fill="currentColor" height="92%"  width="24" height="24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+            </svg>
+        </div>
+    </a>
+
+    <a href="https://www.instagram.com/antonkochnev_" target="_blank" class="social-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+        </svg>
+    </a>
+
+    <a href="https://4x10.dev/" target="_self" class="social-icon logo">
+        <svg viewBox="0 0 385 154" height="85%" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="15.4" height="154" fill="currentColor"/>
+            <rect x="46.2002" width="15.4" height="154" fill="currentColor"/>
+            <rect x="92.3999" width="15.4" height="154" fill="currentColor"/>
+            <rect x="138.6" width="15.4" height="154" fill="currentColor"/>
+            <rect x="231" width="15.4" height="154" fill="currentColor"/>
+            <rect x="277.2" width="107.8" height="154" fill="currentColor"/>
+        </svg>
+    </a>
+</div>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    import { Pass } from 'three/addons/postprocessing/Pass.js';
+    import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+    import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+    const MAX_DPR = 1.5; 
+    const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+
+    const CONFIG = {
+        color: 0xcfd2d3, 
+        fpsLimit: 44,
+        speed: 0.405, 
+        scale: 10.0, 
+        frequency: 0.03675,
+        rotX: 0.523333, rotY: 0.0, rotZ: 1.57,
+        tx: 0.0, ty: 0.0, tz: -37.4,
+        lagRise: 0.117, 
+        lagFall: 0.315,
+        hazeDensity: 0.009, 
+        brightnessGain: 4.0095
+    };
+
+    const emailBtn = document.getElementById('email-btn');
+    emailBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigator.clipboard.writeText('hello@antonkochnev.com').then(() => {
+            emailBtn.classList.add('copied');
+            setTimeout(() => { emailBtn.classList.remove('copied'); }, 2000);
+        });
+    });
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, CONFIG.hazeDensity);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 0, 40);
+
+    const renderer = new THREE.WebGLRenderer({ 
+        powerPreference: "high-performance", 
+        antialias: false, 
+        stencil: false, 
+        depth: false 
+    });
+    
+    const initialDpr = getDpr();
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(initialDpr);
+    renderer.setClearColor(0x000000);
+    renderer.toneMapping = THREE.NoToneMapping;
+    document.body.appendChild(renderer.domElement);
+
+    const commonVertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }
+    `;
+
+    const LagShader = {
+        uniforms: { 
+            'tDiffuse': { value: null }, 
+            'tPrevious': { value: null }, 
+            'tau': { value: new THREE.Vector2(CONFIG.lagRise, CONFIG.lagFall) }, 
+            'dt': { value: 0.016 } 
+        },
+        vertexShader: commonVertexShader,
+        fragmentShader: `
+            uniform sampler2D tDiffuse;
+            uniform sampler2D tPrevious;
+            uniform vec2 tau;
+            uniform float dt;
+            varying vec2 vUv;
+            void main() {
+                vec4 x = texture2D(tDiffuse, vUv);
+                vec4 y_prev = texture2D(tPrevious, vUv);
+                vec4 isRising = step(y_prev, x);
+                vec4 tauCurrent = mix(vec4(tau.y), vec4(tau.x), isRising);
+                vec4 T = max(tauCurrent, vec4(1e-6));
+                float DT = max(dt, 0.0);
+                vec4 a = exp(-DT / T);
+                gl_FragColor = mix(x, y_prev, a);
+            }
+        `
+    };
+
+    const BrightnessShader = {
+        uniforms: { 
+            'tDiffuse': { value: null }, 
+            'gain': { value: 0 }
+        },
+        vertexShader: commonVertexShader,
+        fragmentShader: `
+            uniform sampler2D tDiffuse;
+            uniform float gain;
+            varying vec2 vUv;
+            void main() {
+                vec4 texel = texture2D( tDiffuse, vUv );
+                gl_FragColor = vec4( texel.rgb * gain, texel.a );
+            }
+        `
+    };
+
+    class LagFeedbackPass extends Pass {
+        constructor() {
+            super();
+            this.uniforms = THREE.UniformsUtils.clone(LagShader.uniforms);
+            this.material = new THREE.ShaderMaterial({
+                uniforms: this.uniforms,
+                vertexShader: LagShader.vertexShader,
+                fragmentShader: LagShader.fragmentShader
+            });
+            this.fsQuad = new FullScreenQuad(this.material);
+
+            const rtParams = {
+                type: THREE.HalfFloatType,
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter,
+                format: THREE.RGBAFormat
+            };
+            this.compRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, rtParams);
+            this.oldRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, rtParams);
+            this.textureOld = this.oldRenderTarget.texture;
+        }
+
+        render(renderer, writeBuffer, readBuffer, deltaTime) {
+            this.uniforms['tDiffuse'].value = readBuffer.texture;
+            this.uniforms['tPrevious'].value = this.textureOld;
+            this.uniforms['dt'].value = deltaTime;
+
+            renderer.setRenderTarget(this.compRenderTarget);
+            this.fsQuad.render(renderer);
+
+            if (this.renderToScreen) {
+                renderer.setRenderTarget(null);
+            } else {
+                renderer.setRenderTarget(writeBuffer);
+                if (this.clear) renderer.clear();
+            }
+            this.fsQuad.render(renderer);
+
+            let temp = this.oldRenderTarget;
+            this.oldRenderTarget = this.compRenderTarget;
+            this.compRenderTarget = temp;
+            this.textureOld = this.oldRenderTarget.texture;
+        }
+
+        setSize(width, height) {
+            this.compRenderTarget.setSize(width, height);
+            this.oldRenderTarget.setSize(width, height);
+        }
+    }
+
+    const composer = new EffectComposer(renderer);
+    composer.setPixelRatio(initialDpr);
+    
+    composer.addPass(new RenderPass(scene, camera));
+    
+    const lagPass = new LagFeedbackPass();
+    composer.addPass(lagPass);
+
+    const fxaaPass = new ShaderPass(FXAAShader);
+    fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * initialDpr);
+    fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * initialDpr);
+    composer.addPass(fxaaPass);
+
+    const brightPass = new ShaderPass(BrightnessShader);
+    composer.addPass(brightPass);
+
+    const length = 1400;
+    const segments = 800;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(segments * 3);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.LineBasicMaterial({ color: CONFIG.color, linewidth: 1 });
+    const line = new THREE.Line(geometry, material);
+    
+    line.rotation.set(CONFIG.rotX, CONFIG.rotY, CONFIG.rotZ);
+    line.position.set(CONFIG.tx, CONFIG.ty, CONFIG.tz);
+    scene.add(line);
+    
+    const interval = 1 / CONFIG.fpsLimit;
+    const fadeDuration = 2.0;
+    
+    let lastTime = 0;
+    let simulationTime = 0; 
+    let fadeStartTime = null; 
+
+    function animate(currentTime) {
+        requestAnimationFrame(animate);
+
+        const timeInSeconds = currentTime * 0.001;
+        
+        if (fadeStartTime === null) {
+            fadeStartTime = timeInSeconds;
+            lastTime = timeInSeconds; 
+        }
+
+        let deltaTime = timeInSeconds - lastTime;
+        
+        if (deltaTime > 0.5) {
+            deltaTime = interval;
+            lastTime = timeInSeconds - interval; 
+        }
+
+        if (deltaTime < interval) return;
+        lastTime = timeInSeconds - (deltaTime % interval);
+
+        const timeSinceStart = timeInSeconds - fadeStartTime;
+        if (timeSinceStart <= fadeDuration) {
+            const progress = timeSinceStart / fadeDuration;
+            brightPass.uniforms['gain'].value = progress * CONFIG.brightnessGain;
+        } else if (brightPass.uniforms['gain'].value !== CONFIG.brightnessGain) {
+            brightPass.uniforms['gain'].value = CONFIG.brightnessGain;
+        }
+
+        simulationTime += interval * CONFIG.speed;
+
+        const posArray = geometry.attributes.position.array;
+        for (let i = 0; i < segments; i++) {
+            const z = (i / segments) * length - (length / 2);
+            posArray[i * 3 + 1] = Math.sin(z * CONFIG.frequency + simulationTime) * CONFIG.scale;
+            posArray[i * 3 + 2] = z;
+        }
+        geometry.attributes.position.needsUpdate = true;
+        
+        composer.render(interval);
+    }
+
+    window.addEventListener('resize', () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        
+        const dpr = getDpr();
+
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        
+        renderer.setPixelRatio(dpr);
+        renderer.setSize(w, h);
+        
+        composer.setPixelRatio(dpr);
+        composer.setSize(w, h);
+        
+        const drawingBufferSize = renderer.getDrawingBufferSize(new THREE.Vector2());
+        lagPass.setSize(drawingBufferSize.width, drawingBufferSize.height);
+
+        fxaaPass.material.uniforms['resolution'].value.x = 1 / drawingBufferSize.width;
+        fxaaPass.material.uniforms['resolution'].value.y = 1 / drawingBufferSize.height;
+    });
+
+    animate(0);
+
+</script>
+</body>
+</html>
